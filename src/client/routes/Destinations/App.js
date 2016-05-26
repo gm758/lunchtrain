@@ -1,231 +1,144 @@
-import React, {Component} from 'react';
-import ReactDOM from 'react-dom';
+import { default as React, Component } from 'react';
+import { default as update } from 'react-addons-update';
 
-import GoogleMap from './components/GoogleMap.js';
-import GoogleList from './components/GoogleList.js';
-import GoogleListEntry from './components/GoogleListEntry.js';
-import GoogleListDropdown from './components/GoogleListDropdown.js';
-import LocalMap from './components/LocalMap.js';
-import LocalList from './components/LocalList.js';
+import { default as canUseDOM } from 'can-use-dom';
+import { default as _ } from 'lodash';
 
-import $ from 'jquery';
+import { GoogleMapLoader, GoogleMap, Marker } from 'react-google-maps';
+import { triggerEvent } from 'react-google-maps/lib/utils';
+import GoogleList from './components/GoogleList'
 
 
-let map;
-let service;
-let infowindow;
-
-class Destinations extends Component {
-    constructor(props){
-      super(props);
-      this.state = {
-        list: [],
-        recommend: false,
-        lat: null,
-        lng: null,
-        rendering: true
-      } 
-    }
-    // set the default HR lat lng, otherwise, users locationcheck
-    // resultLocation is google place API default is restaurant and half mile radius
-
-    handleDestAccordion(id) {
-      console.log('accordion', id)
-      let clickedDest = this.refs['dropdown'+id];
-      if (clickedDest.state.open) {
-        clickedDest.setState({
-          open: false,
-          accordionClass: "details",
-        });
-      }
-      else {
-        clickedDest.setState({
-          open: true,
-          accordionClass: "details open"
-        });
-      }
-    }
-
-    navi() {
-      navigator.geolocation.getCurrentPosition((position) => {
-        this.setState({
-          lat: +position.coords.latitude,
-          lng: +position.coords.longitude,
-        })
-      });
-    }
-
-    componentDidMount() {
-      this.navi();
-      document.body.style.backgroundColor = "#A7D2CB";
-      document.body.style.overflow = "initial";
-      document.body.style.overflowX = "hidden";
-    }
-
-    componentWillUnmount() {
-      document.body.style.backgroundColor = "#F9F9EF";
-      document.body.style.overflow = "hidden";
-      document.body.style.overflowX = "initial";
-    }
-
-    onClicks() {
-      this.locatGetPlace();
-      this.setState({
-        recommend: true
-      })
-    }
-
-    onRevese() {
-      this.getPlace();
-      this.setState({
-        recommend: false,
-        redering: true
-      })
-    }
-
-    getPlace() {
-      const initMap = () => {
-        let city = {lat: this.state.lat, lng: this.state.lng};
-          map = new google.maps.Map(document.getElementById("map"), {
-          center: city,
-          zoom: 15
-        });
-
-        infowindow = new google.maps.InfoWindow();
-
-        service = new google.maps.places.PlacesService(map);
-        service.nearbySearch({
-          location: city,
-          radius: 500,
-          types: ['restaurant','cafe']
-        }, callback);
-      };
-
-      const callback = (results, status) => {
-        if (status === google.maps.places.PlacesServiceStatus.OK) {
-          for (var i = 0; i < results.length; i++) {
-            createMarker(results[i]);
-          }
-          this.setState({
-            list: results
-          });
-          console.log('after ', this.state.list)
-        }
-      };
-
-
-
-      const createMarker = (place) => {
-        var placeLoc = place.geometry.location;
-        var marker = new google.maps.Marker({
-          map: map,
-          position: place.geometry.location
-        });
-        google.maps.event.addListener(marker, 'click', function() {
-          infowindow.setContent(place.name);
-          infowindow.open(map, this);
-        });
-      };
-      let iniRender;
-      if(this.state.redering === false) {
-        iniRender = '';
-      } else {
-        iniRender = initMap.bind(this);
-        this.setState({
-          redering: false
-        })
-      }
-      google.maps.event.addDomListener(window, 'load', setTimeout( iniRender, 3000) );
-    }
-    
-    locatGetPlace() {
-      $.ajax({
-        url: '/api/destinations',
-        type: 'GET',
-        datatype: 'json',
-        success: function(data) {
-          this.setState({
-            list: data
-          });
-          this.locations();
-          console.log('after local ', this.state.list);
+export default class Destinations extends Component {
+  constructor(props, context) {
+    super(props);
+    this.state = {
+      markers: [{
+        position: {
+          lat: 25.0112183,
+          lng: 121.52067570000001,
         },
-        error: function(data) {
-          console.error(data);
-        }
-      });
+        key: `Taiwan`,
+        defaultAnimation: 2,
+      }],
+      nearbyLocations: [] ,
+    };
+    this.handleWindowResize = _.throttle(::this.handleWindowResize, 500);
+    this.getNearbyLocations = this.getNearbyLocations.bind(this);
+  }
 
-      const locations = () => {
-        var map = new google.maps.Map(document.getElementById('maps'), {
-          zoom: 10,
-          center: new google.maps.LatLng(-33.92, 151.25),
-          mapTypeId: google.maps.MapTypeId.ROADMAP
-        });
+  getNearbyLocations(latitude, longitude) {
+    fetch(`/api/nearby/?latitude=${latitude}&longitude=${longitude}`)
+      .then(res => res.json())
+      .then(json => this.setState({
+        nearbyLocations: json, 
+      }))
+      .catch(x => console.log(x))
+  }
 
-        var infowindow = new google.maps.InfoWindow();
-
-        var marker, i;
-
-        const lists = this.state.list;
-        for(var i = 0 ; i < lists.length; i ++ ) {
-          marker = new google.maps.Marker({
-            position: new google.maps.LatLng(lists[i]['destination'].lat, lists[i]['destination'].long),
-            map: map
-          });
-
-          google.maps.event.addListener(marker, 'click', (function(marker, i) {
-            return function() {
-              infowindow.setContent(lists[i]);
-              infowindow.open(map, marker);
-            }
-          })(marker, i));
-        }
-       google.maps.event.addDomListener(window, 'load', locatGetPlace);
-      }
-    }
-
-    render() {
-      if( this.state.lat === null || this.state.lng === null) {
-        return (
-          <div>Loading...</div>
-        )
-      } else {
-        if( !this.state.recommend ) {
-          return(
-            <div>
-              <br />
-              <div>
-                <div>
-                  <div id="map">
-                    <GoogleMap onMapShow={ this.getPlace.bind(this) } />
-                  </div>
-                  <div>
-                    <button onClick={this.onRevese.bind(this)}>Google</button>
-                    <button onClick={this.onClicks.bind(this)}>Recommendation</button>
-                    <GoogleList list={this.state.list} handleDestAccordion={this.handleDestAccordion}/>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )
-        } else {
-          return (
-            <div>
-              <div>
-                <button onClick={this.onRevese.bind(this)}>Google</button>
-                <button onClick={this.onClicks.bind(this)}>Recommendation</button>
-              </div>
-              <div id="maps">
-                <localMap onMapShows={this.locatGetPlace.bind(this)}/>
-              </div>
-              <div>
-                <localLists list={this.state.list}/>
-              </div>
-            </div>
-          )
-        }
-      }
+  componentWillReceiveProps(newProps) {
+    if (this.state.nearbyLocations.length === 0 && newProps.latitude && newProps.longitude) {
+      this.getNearbyLocations(newProps.latitude, newProps.longitude);
     }
   }
-export default Destinations;
 
+  componentDidMount() {
+    if (this.props.latitude && this.props.longitude) {
+      this.getNearbyLocations(this.props.latitude, this.props.longitude);
+    }
+
+    if (!canUseDOM) {
+      return;
+    }
+    window.addEventListener(`resize`, this.handleWindowResize);
+  }
+
+  componentWillUnmount() {
+    if (!canUseDOM) {
+      return;
+    }
+    window.removeEventListener(`resize`, this.handleWindowResize);
+  }
+
+  handleWindowResize() {
+    console.log(`handleWindowResize`, this._googleMapComponent);
+    triggerEvent(this._googleMapComponent, `resize`);
+  }
+
+  /*
+   * This is called when you click on the map.
+   * Go and try click now.
+   */
+  handleMapClick(event) {
+    let { markers } = this.state;
+    markers = update(markers, {
+      $push: [
+        {
+          position: event.latLng,
+          defaultAnimation: 2,
+          key: Date.now(), // Add a key property for: http://fb.me/react-warning-keys
+        },
+      ],
+    });
+    this.setState({ markers });
+
+    if (markers.length === 3) {
+      this.props.toast(
+        `Right click on the marker to remove it`,
+        `Also check the code!`
+      );
+    }
+  }
+
+  handleMarkerRightclick(index, event) {
+    /*
+     * All you modify is data, and the view is driven by data.
+     * This is so called data-driven-development. (And yes, it's now in
+     * web front end and even with google maps API.)
+     */
+    let { markers } = this.state;
+    markers = update(markers, {
+      $splice: [
+        [index, 1],
+      ],
+    });
+    this.setState({ markers });
+  }
+
+  render() {
+    return (
+      <div>
+        <GoogleMapLoader
+          containerElement={
+            <div
+              {...this.props}
+              style={{
+                height: '500px',
+                width: '400px',
+                float: 'left',
+              }}
+            />
+          }
+          googleMapElement={
+            <GoogleMap
+              ref={(map) => (this._googleMapComponent = map) && console.log(map.getZoom())}
+              defaultZoom={3}
+              defaultCenter={{ lat: -25.363882, lng: 131.044922 }}
+              onClick={::this.handleMapClick}
+            >
+              {this.state.markers.map((marker, index) => {
+                return (
+                  <Marker
+                    {...marker}
+                    onRightclick={this.handleMarkerRightclick.bind(this, index)}
+                  />
+                );
+              })}
+            </GoogleMap>
+          }
+        />
+        <GoogleList list={this.state.nearbyLocations} />
+      </div>
+    );
+  }
+}

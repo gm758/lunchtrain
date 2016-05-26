@@ -3,6 +3,7 @@ const db = require('../db/index');
 const _ = require('underscore');
 const slackUtils = require('./slack');
 const config = require('./config');
+const request = require('request')
 
 function serveIndex(req, res) {
   res.sendFile(path.join(__dirname, '../../../views/index.html'));
@@ -138,6 +139,19 @@ function serveNotFound(req, res) {
   res.send(404, 'Page does not exist!');
 }
 
+function getNearby(req, res) {
+  const { latitude, longitude } = req.query
+  const url = config.getPlacesURL(latitude, longitude)
+  request(url, (err, data) => {
+    const jsonData = JSON.parse(data.body)
+    if (err) {
+      res.sendStatus(500)
+    } else {
+      res.status(200).send(jsonData.results)
+    }      
+  })
+}
+
 module.exports = {
   serveIndex,
   serveLogin,
@@ -150,4 +164,5 @@ module.exports = {
   createTrain,
   boardTrain,
   serveNotFound,
+  getNearby,
 };

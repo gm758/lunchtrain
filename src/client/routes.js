@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { cloneElement, Component } from 'react';
 import ReactDOM from 'react-dom';
 import { Router, Route, IndexRoute, Link, browserHistory } from 'react-router';
 
@@ -15,13 +15,27 @@ class Root extends React.Component {
   
   constructor(props) {
     super(props);
+    this.state = {
+      latitude: null,
+      longitude: null,
+    }
+  }
+
+  componentDidMount() {
+    navigator.geolocation.getCurrentPosition(position => this.setState({
+      latitude: position.coords.latitude,
+      longitude: position.coords.longitude, 
+    }))
   }
 
   render() {
     return(
       <div>
         <div id="appWrapper">
-          {this.props.children || <Landing />}
+          {!!this.props.children ? cloneElement(this.props.children, {
+            latitude: this.state.latitude,
+            longitude: this.state.longitude,
+          }) : <Landing />}
         </div>
       </div>
     )
@@ -29,16 +43,6 @@ class Root extends React.Component {
 }
 
 import $ from 'jquery';
-
-  <Router history={browserHistory}>
-    <Route path="/" component={Root}>
-      <IndexRoute component={Landing} />
-      <Route path="login" component={Login}></Route>
-      <Route path="destinations" component={Destinations}></Route>
-      <Route path="trains" component={Trains}></Route>
-    </Route>
-  </Router>
-
 /*
   Browserify causes a bug with onEnter, so we haven't been able
   to get it to work for authentication. This is totally hacked together,

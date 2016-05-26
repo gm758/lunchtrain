@@ -1,49 +1,45 @@
-import React, {Component} from 'react';
-import ReactDOM from 'react-dom';
-
-import GoogleMap from './GoogleMap.js';
-import GoogleList from './GoogleList.js';
-import GoogleListDropdown from './GoogleListDropdown.js';
+import React, { Component } from 'react'
+import TimeInput from './TimeInput'
 
 class GoogleListEntry extends Component {
   constructor(props) {
-      super(props)
+    super(props) 
+    this.state = {
+      departure: Date.now(),
+      arrival: Date.now(),
     }
 
-    render() {
-      let item = this.props.item;
-      let placeId = item.place_id;
-      let smallMaps = "https://www.google.com/maps/embed/v1/place?q=place_id:"+ placeId +"&key=AIzaSyAxXjy2uKnQcnU1SxfaSil-fY5ek_nmkE4"
-
-      if(item.opening_hours.open_now) {
-          item.opening_hours.open_now = 'open'
-        } else {
-          item.opening_hours.open_now = 'closed'
-        }
-
-
-      if(item.price_level === 1) {
-        item.price_level = '$'
-      } else if(item.price_level === 2) {
-        item.price_level = '$$'
-      } else if(item.price_level === 3) {
-        item.price_level = '$$$'
-      } else if(item.price_level === 4) {
-        item.price_level = '$$$$'
-      } else {
-        item.price_level = '$$$$$'
-      }
-
-      return (
-        <div>
-          <div className="itemWrapper">
-            <div>{item.name}</div> 
-          </div>
-        </div>
-      )
-    }
+    this.handleArrivalChange = this.handleArrivalChange.bind(this)
+    this.handleDepartureChange = this.handleDepartureChange.bind(this)
   }
 
+  handleArrivalChange(e) {
+    this.setState({ arrival: e.target.value })
+  }
 
+  handleDepartureChange(e) {
+    this.setState({ departure: e.target.value })
+  }
 
-export default GoogleListEntry;
+  render() {
+    return (
+      <div>
+        <div>{this.props.name}</div>
+        <div>Price: {this.props.price}</div>
+        <div>Rating: {this.props.rating}</div>
+        <div>{this.props.open}</div>
+        <div>{this.props.vicinity}</div>
+        <TimeInput
+          departureTime={this.state.departure}
+          arrivalTime={this.state.arrival}
+          handleDepartureChange={this.handleDepartureChange}
+          handleArrivalChange={this.handleArrivalChange}
+        />
+        <button>Submit that shit!</button>
+      </div>
+    );
+  }
+}
+
+export default GoogleListEntry
+

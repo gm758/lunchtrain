@@ -10,6 +10,7 @@ module.exports = (app) => {
   app.get('/logout', utils.serveLogout);
   app.get('/auth/slack', auth.slackAuth);
   app.get('/auth/slack/callback', auth.slackAuthCallback, utils.indexRedirect);
+  app.get('/api/nearby', utils.getNearby);
   app.post('/destinations', utils.createTrain);
   app.post('/trains', utils.boardTrain);
 };
